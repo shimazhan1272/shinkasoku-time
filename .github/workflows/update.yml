@@ -1,10 +1,11 @@
 name: データ更新と公開
 
 on:
-  schedule:
-    # レース時間帯（日本時間 8:00〜23:59）に10分ごと。cron は UTC。
-    - cron: "*/10 23 * * *"
-    - cron: "*/10 0-14 * * *"
+  # 定期実行は停止中（Render 版でその場取得するため）。
+  # 再開するときは下の3行のコメントを外す（日本時間 8:00〜23:59 に10分ごと。cron は UTC）。
+  # schedule:
+  #   - cron: "*/10 23 * * *"
+  #   - cron: "*/10 0-14 * * *"
   push:
     branches: [main]
   workflow_dispatch:
