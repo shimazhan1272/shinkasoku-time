@@ -118,22 +118,6 @@ td.crs-cell{white-space:nowrap}
   color:var(--text);font-weight:700;font-family:ui-monospace,Consolas,monospace}
 input.tm{font:inherit;width:64px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--text)}
 input.tm.bad{border-color:#e0242b}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.primary:hover{filter:brightness(1.1);background:var(--accent)}
-.btn.primary:disabled{opacity:.6;cursor:wait}
-.btn.icon{padding:6px 9px}
-.fetch-status{font-size:13px;margin:-2px 0 10px;padding:8px 10px;border-radius:7px;background:var(--accent-soft)}
-.fetch-status.err{background:transparent;border:1px solid #e0242b;color:var(--r1t);text-align:left;padding:8px 10px}
-dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);max-width:560px;width:calc(100% - 32px);padding:0}
-dialog::backdrop{background:#0008}
-.dlg{padding:18px 20px;font-size:14px;line-height:1.7}
-.dlg h3{margin:0 0 8px;font-size:17px}
-.dlg ol{padding-left:20px;margin:8px 0}
-.dlg input{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);margin:6px 0}
-.dlg .small{font-size:12px;color:var(--muted)}
-.dlg code{background:var(--bg);padding:1px 5px;border-radius:4px}
-.dlg-btns{display:flex;gap:8px;align-items:center;margin-top:12px}
-.dlg-btns .spacer{flex:1}
 .loading{color:var(--muted);padding:30px;text-align:center}
 .err{color:var(--r1t);padding:20px;text-align:center}
 </style>
@@ -159,33 +143,10 @@ dialog::backdrop{background:#0008}
       <span class="spacer"></span>
       <label class="auto"><input type="checkbox" id="auto"> 60秒ごとに自動更新</label>
       <button class="btn" id="reload" title="公開中の最新データを読み直します">更新</button>
-      <button class="btn primary" id="fetchNow" hidden title="GitHub Actions でこのレースを今すぐ取り直します">今すぐ取得</button>
-      <button class="btn icon" id="fetchSetup" hidden title="今すぐ取得の設定" aria-label="今すぐ取得の設定">⚙</button>
     </div>
-    <div class="fetch-status" id="fetchStatus" hidden></div>
     <div id="data"></div>
   </section>
 </main>
-<dialog id="setupDlg">
-  <form method="dialog" class="dlg">
-    <h3>今すぐ取得の設定</h3>
-    <p>「今すぐ取得」は、GitHub Actions にこのレースの取り直しを依頼します。依頼にはリポジトリの管理者用トークンが必要です。トークンは<strong>このブラウザの中だけ</strong>に保存され、GitHub 以外には送信されません。</p>
-    <ol>
-      <li><a id="tokLink" target="_blank" rel="noopener" href="https://github.com/settings/personal-access-tokens/new">GitHub でトークンを作成</a>（Fine-grained token）</li>
-      <li>Repository access：<b>Only select repositories</b> → <b id="repoName"></b></li>
-      <li>Permissions → Repository permissions → <b>Actions：Read and write</b>（他は不要）</li>
-      <li>作成したトークンを下に貼り付けて「保存」</li>
-    </ol>
-    <input type="password" id="tokInput" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
-    <p class="small">トークンを使わない場合は、<a id="wfLink" target="_blank" rel="noopener">GitHub の Actions 画面</a>の「Run workflow」で、races に <code id="raceKey"></code> を入れて実行しても同じです。</p>
-    <div class="dlg-btns">
-      <button type="button" class="btn" id="tokClear">トークンを削除</button>
-      <span class="spacer"></span>
-      <button value="cancel" class="btn">閉じる</button>
-      <button type="button" class="btn primary" id="tokSave">保存</button>
-    </div>
-  </form>
-</dialog>
 <script>
 const $ = s => document.querySelector(s);
 const store = {
@@ -218,104 +179,10 @@ function showDate(j){
   $('#date').textContent = s;
 }
 
-// ---------------------------------------------------------------------------
-// 今すぐ取得（GitHub Pages 版のみ）：workflow_dispatch で指定レースを取り直す
-// ---------------------------------------------------------------------------
-function repoInfo(){
-  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
-  const repo = location.pathname.split('/').filter(Boolean)[0];
-  return m && repo ? {owner:m[1], repo} : {owner:'shimazhan1272', repo:'shinkasoku-time'};
-}
-const TOKEN_KEY = 'gh_dispatch_token';
-let pollTimer = null;
-
-function setStatus(msg, isErr){
-  const el = $('#fetchStatus');
-  el.hidden = !msg; el.textContent = msg || ''; el.classList.toggle('err', !!isErr);
-}
-
-function openSetup(){
-  const {owner, repo} = repoInfo();
-  $('#repoName').textContent = `${owner}/${repo}`;
-  $('#wfLink').href = `https://github.com/${owner}/${repo}/actions/workflows/update.yml`;
-  $('#raceKey').textContent = cur.jcd ? `${cur.jcd}-${cur.rno}` : '11-7';
-  $('#tokInput').value = store.get(TOKEN_KEY) || '';
-  $('#setupDlg').showModal();
-}
-
-async function fetchNow(){
-  const token = store.get(TOKEN_KEY);
-  if (!token){ openSetup(); return; }
-  const {owner, repo} = repoInfo();
-  const key = `${cur.jcd}-${cur.rno}`;
-  const before = STATIC && STATIC.races[key] ? STATIC.races[key].fetched_at : null;
-  const beforeUpd = STATIC ? STATIC.updated_at : null;
-  const btn = $('#fetchNow'); btn.disabled = true;
-  try{
-    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/update.yml/dispatches`, {
-      method:'POST',
-      headers:{'Accept':'application/vnd.github+json','Authorization':`Bearer ${token}`,'X-GitHub-Api-Version':'2022-11-28'},
-      body: JSON.stringify({ref:'main', inputs:{races:key}})
-    });
-    if (r.status === 401 || r.status === 403 || r.status === 404){
-      btn.disabled = false;
-      setStatus(`依頼できませんでした（${r.status}）。トークンの権限（Actions：Read and write、対象リポジトリ）を確認してください。`, true);
-      return;
-    }
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  }catch(e){
-    btn.disabled = false;
-    setStatus(`依頼できませんでした：${e.message}`, true);
-    return;
-  }
-  const started = Date.now();
-  const v = VENUES.find(x => x.jcd === cur.jcd);
-  const label = `${v ? v.name : ''} ${cur.rno}R`;
-  setStatus(`${label} の取得を依頼しました。反映まで通常2〜4分かかります…`);
-  clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    const sec = Math.round((Date.now() - started) / 1000);
-    try{
-      await fetchStatic();
-      const now = STATIC.races[key] ? STATIC.races[key].fetched_at : null;
-      if (STATIC.updated_at !== beforeUpd && (now !== before || !before)){
-        clearInterval(pollTimer); btn.disabled = false;
-        showDate(STATIC);
-        setStatus(`${label} を更新しました（データ取得 ${now || '-'}）。`);
-        if (`${cur.jcd}-${cur.rno}` === key && !editMode) loadRace(false);
-        setTimeout(() => setStatus(''), 8000);
-        return;
-      }
-    }catch(e){}
-    if (sec > 480){
-      clearInterval(pollTimer); btn.disabled = false;
-      setStatus('時間内に反映されませんでした。GitHub の Actions 画面で実行状況を確認してください。', true);
-    } else {
-      setStatus(`${label} の取得を依頼しました。反映を待っています…（${Math.floor(sec/60)}分${sec%60}秒）`);
-    }
-  }, 15000);
-}
-
-$('#fetchNow').onclick = () => cur.jcd && fetchNow();
-$('#fetchSetup').onclick = openSetup;
-$('#tokSave').onclick = () => {
-  const t = $('#tokInput').value.trim();
-  if (t) store.set(TOKEN_KEY, t);
-  $('#setupDlg').close();
-  if (t) setStatus('トークンを保存しました。「今すぐ取得」で取り直しを依頼できます。');
-};
-$('#tokClear').onclick = () => {
-  try{ localStorage.removeItem(TOKEN_KEY) }catch(e){}
-  $('#tokInput').value = '';
-  setStatus('トークンを削除しました。');
-};
-
 async function loadVenues(){
   const j = await fetchVenues();
   VENUES = j.venues;
   showDate(j);
-  $('#fetchNow').hidden = !STATIC;
-  $('#fetchSetup').hidden = !STATIC;
   const box = $('#venues'); box.innerHTML = '';
   for (const v of VENUES){
     const b = document.createElement('button');
