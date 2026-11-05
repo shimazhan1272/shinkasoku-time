@@ -223,8 +223,8 @@ async function loadVenues(){
   const box = $('#venues'); box.innerHTML = '';
   for (const v of VENUES){
     const b = document.createElement('button');
-    const tag = !j.schedule_known ? '' : (v.open ? (v.original ? '開催中' : '開催中・展示のみ') : '非開催');
-    b.innerHTML = `${String(v.jcd).padStart(2,'0')} ${v.name}<small>${tag}</small>`;
+    b.textContent = `${String(v.jcd).padStart(2,'0')}_${v.name}`;
+    if (j.schedule_known && !v.open) b.title = '本日は開催なし';
     if (j.schedule_known && !v.open) b.classList.add('closed');
     b.onclick = () => selectVenue(v.jcd);
     b.dataset.jcd = v.jcd; box.appendChild(b);
