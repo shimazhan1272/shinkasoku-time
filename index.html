@@ -178,7 +178,6 @@ input.tm.bad{border-color:#e0242b}
     <div class="bar">
       <span class="race-name" id="raceName"></span>
       <span class="spacer"></span>
-      <label class="auto"><input type="checkbox" id="auto"> 60秒ごとに自動更新</label>
       <button class="btn" id="reload" title="公開中の最新データを読み直します">更新</button>
     </div>
     <div id="data"></div>
@@ -423,7 +422,17 @@ function drawAll(){
   $('#data').innerHTML = h + notes(j);
   bindEditToggle();
   bindRowDrag();
-  document.querySelectorAll('input.tm').forEach(inp => inp.oninput = onTimeInput);
+  document.querySelectorAll('input.tm').forEach(inp => {
+    inp.oninput = onTimeInput;
+    inp.onchange = formatTimeInput;          // 入力確定時に 666→6.66 の表示へ
+    inp.onkeydown = e => {                    // Enter で確定して下の艇へ
+      if (e.key !== 'Enter') return;
+      e.preventDefault(); formatTimeInput(e);
+      const all = [...document.querySelectorAll(`input.tm[data-key="${inp.dataset.key}"]`)];
+      const next = all[all.indexOf(inp) + 1];
+      if (next){ next.focus(); next.select(); } else inp.blur();
+    };
+  });
   drawAccel();
 }
 
@@ -483,6 +492,11 @@ function bindRowDrag(){
   });
 }
 
+function formatTimeInput(e){
+  const t = e.target, v = parseTime(t.value);
+  if (v != null) t.value = fmt2(v);
+}
+
 function onTimeInput(e){
   const t = e.target, b = curRes.boats.find(x => x.waku === +t.dataset.waku);
   const v = parseTime(t.value);
@@ -540,10 +554,6 @@ function notes(j){
 }
 
 $('#reload').onclick = () => cur.jcd && loadRace(true);
-$('#auto').onchange = e => {
-  clearInterval(timer); timer = null;
-  if (e.target.checked) timer = setInterval(() => cur.jcd && !editMode && loadRace(true), 60000);
-};
 loadVenues().catch(e => { $('#venues').innerHTML = `<div class="err">サーバに接続できません：${esc(e.message)}</div>` });
 </script>
 </body>
