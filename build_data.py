@@ -56,6 +56,10 @@ def main():
     day = now.strftime("%Y%m%d")
     sched = scraper.get_schedule(day)
     prev = load_previous(prev_url, day)
+    # 手動更新：指定レース（"場-レース" のカンマ区切り）は時間に関係なく取り直す
+    force = {x.strip() for x in os.environ.get("FORCE_RACES", "").split(",") if x.strip()}
+    if force:
+        print("手動更新:", ",".join(sorted(force)))
 
     venues, races = [], {}
     fetched = 0
@@ -68,7 +72,7 @@ def main():
             old = prev.get(key)
             t = s["races"][rno].get("closed_at") or ""
             near = True
-            if t:
+            if t and key not in force:
                 hh, mm = map(int, t.split(":"))
                 closed = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
                 mins = (closed - now).total_seconds() / 60

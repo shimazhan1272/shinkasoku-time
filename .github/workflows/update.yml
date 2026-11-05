@@ -8,6 +8,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      races:
+        description: "今すぐ取り直すレース（例: 11-7,1-8 ＝ 場番号-レース番号。空欄なら通常どおり）"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -31,6 +36,7 @@ jobs:
       - name: データ取得
         env:
           TZ: Asia/Tokyo
+          FORCE_RACES: ${{ github.event.inputs.races }}
         run: python build_data.py site "${{ steps.pages.outputs.base_url }}/data/today.json"
       - uses: actions/upload-pages-artifact@v3
         with:
