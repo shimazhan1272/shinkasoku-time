@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新加速タイム</title>
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#fff; --text:#1d2330; --muted:#6b7385; --line:#e3e6ec;
+  --accent:#0b5fff; --accent-soft:#e6eeff; --off:#c3c8d2;
+  --r1:#ffd9d9; --r1t:#c40000; --r2:#fff1c2; --r2t:#8a6200; --r3:#d8f3dc; --r3t:#1b7a34;
+  --ac-head:#1e3a5f; --ac-headt:#ffffff; --ac-headline:#2c4b73;
+  --ac1:#f4c2c6; --ac2:#f1e2a3; --ac3:#c6e6cc; --ac-dt:#4a4f5c; --track:#e9edf3;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171d; --panel:#1d222b; --text:#e8ebf1; --muted:#9aa3b5; --line:#2e3542;
+    --accent:#5b93ff; --accent-soft:#22304d; --off:#4a5160;
+    --r1:#5a1f24; --r1t:#ff8f8f; --r2:#4d4119; --r2t:#ffd666; --r3:#1d4429; --r3t:#7ee29a;
+    --ac-head:#1e3450; --ac-headt:#e8edf5; --ac-headline:#2a4466;
+    --ac1:#8a2a35; --ac2:#7a6814; --ac3:#2d5c34; --ac-dt:#d9dde5; --track:#141922; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px}
+header{padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--line);
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:18px;margin:0}
+.date{color:var(--muted);font-size:14px}
+main{max-width:1280px;margin:0 auto;padding:16px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;letter-spacing:.05em}
+.venues{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.venues button,.races button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  border-radius:8px;padding:8px 4px;cursor:pointer;line-height:1.2}
+.venues button small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.venues button.closed{color:var(--off)}
+.venues button.closed small{color:var(--off)}
+.venues button.sel,.races button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+.venues button.sel small,.races button.sel small{color:#ffffffcc}
+.venues button:hover:not(.sel),.races button:hover:not(.sel){background:var(--accent-soft)}
+.races{display:grid;grid-template-columns:repeat(12,1fr);gap:6px}
+@media (max-width:700px){ .races{grid-template-columns:repeat(6,1fr)} }
+.races button{font-weight:700}
+.races button small{display:block;font-size:10px;font-weight:400;color:var(--muted)}
+.title{font-size:13px;color:var(--muted);margin:-4px 0 10px}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bar .race-name{font-size:17px;font-weight:700}
+.bar .spacer{flex:1}
+.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  padding:6px 12px;border-radius:7px;cursor:pointer}
+.btn:hover{background:var(--accent-soft)}
+label.auto{font-size:13px;color:var(--muted);display:flex;gap:4px;align-items:center}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:center}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--bg)}
+td.name{text-align:left;white-space:nowrap}
+td.name small{color:var(--muted);font-size:11px;margin-left:6px}
+td.num{font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;position:relative}
+td.num .rk{font-size:10px;color:var(--muted);margin-left:3px;font-weight:400}
+td.rank1{background:var(--r1);color:var(--r1t)}
+td.rank2{background:var(--r2);color:var(--r2t)}
+td.na{color:var(--off);font-weight:400}
+.waku{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;font-weight:700;border-radius:4px;border:1px solid #0003}
+.w1{background:#fff;color:#000}.w2{background:#222;color:#fff}.w3{background:#e60012;color:#fff}
+.w4{background:#0068b7;color:#fff}.w5{background:#ffe100;color:#000}.w6{background:#00a040;color:#fff}
+.note{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6}
+.note.warn{color:var(--r2t)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+.legend .l1::before{background:var(--r1)} .legend .l2::before{background:var(--r2)}
+a{color:var(--accent)}
+.sub-bar{display:flex;align-items:center;gap:12px;margin:18px 0 8px;flex-wrap:wrap}
+.sub-bar:first-child{margin-top:0}
+.sub-bar h3{font-size:14px;margin:0}
+.edit-tg{margin-left:auto}
+.legend span.la1::before{background:var(--ac1)} .legend span.la2::before{background:var(--ac2)}
+.legend span.la3::before{background:var(--ac3)}
+.legend .la1::before,.legend .la2::before,.legend .la3::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+.sub-bar .unit{font-size:12px;color:var(--muted)}
+/* 丸い艇番 */
+.boat{display:inline-flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;border:2px solid #fff;box-shadow:0 0 0 1px #0004;flex:none}
+.b1{background:#eef0f4;color:#1b2a4a}.b2{background:#000;color:#fff}.b3{background:#e03434;color:#fff}
+.b4{background:#2a6fd6;color:#fff}.b5{background:#f2d21b;color:#1b1b1b}.b6{background:#1f9a4c;color:#fff}
+/* 新加速タイム */
+.accel-wrap{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(240px,1fr);gap:24px;align-items:start}
+@media (max-width:820px){ .accel-wrap{grid-template-columns:1fr} }
+table.accel{min-width:520px;border:1px solid var(--line)}
+table.accel th{background:var(--ac-head);color:var(--ac-headt);font-size:14px;font-weight:700;padding:10px 6px;border:1px solid var(--ac-headline)}
+table.accel td{border:1px solid var(--line);padding:6px 4px}
+table.accel td.cb{white-space:nowrap}
+table.accel .crs{display:inline-block;width:16px;color:var(--muted);font-size:13px;margin-right:6px;font-family:ui-monospace,Consolas,monospace}
+td.av .v{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:21px;font-weight:700;line-height:1.15}
+td.av .d{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted)}
+td.av .d.plus{color:#ff4d4f;font-weight:700}
+td.ac1{background:var(--ac1)} td.ac2{background:var(--ac2)} td.ac3{background:var(--ac3)}
+td.num.ac1 .rk,td.num.ac2 .rk,td.num.ac3 .rk{color:var(--ac-dt)}
+td.ac1 .d,td.ac2 .d,td.ac3 .d{color:var(--ac-dt)}
+td.ac1 .d.plus,td.ac2 .d.plus,td.ac3 .d.plus{color:#ffb3b5}
+.power-panel h4{margin:6px 0 14px;font-size:17px}
+.prow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.prk{width:36px;text-align:right;font-weight:700;font-size:15px}
+.prk.top{color:#ff5a6a}
+.track{position:relative;flex:1;height:44px;background:var(--track);border-radius:6px;overflow:hidden}
+.track .avg{position:absolute;left:50%;top:6px;bottom:6px;border-left:1px dashed var(--muted);opacity:.7}
+.track .bar{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:linear-gradient(90deg,#1f3d66,#4d8fe0)}
+.track .bar.top{background:linear-gradient(90deg,#2a2440,#ff6b7d)}
+.track .pv{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:ui-monospace,Consolas,monospace;font-weight:700;font-size:20px}
+.pnote{font-size:13px;color:var(--muted);margin-top:4px}
+table.times tr.drow{cursor:grab;transition:background .12s}
+table.times tbody.is-dragging, table.times tbody.is-dragging *{cursor:grabbing;user-select:none}
+table.times tr.dragging{background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:1}
+td.crs-cell{white-space:nowrap}
+.handle{font-size:18px;line-height:1;border:0;background:none;color:var(--muted);cursor:grab;padding:4px 6px;touch-action:none;border-radius:5px}
+.handle:hover,.handle:focus-visible{color:var(--text);background:var(--accent-soft);outline:none}
+.crs-val{display:inline-block;min-width:22px;padding:2px 0;border-radius:5px;background:var(--accent-soft);
+  color:var(--text);font-weight:700;font-family:ui-monospace,Consolas,monospace}
+input.tm{font:inherit;width:64px;padding:4px;text-align:center;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--text)}
+input.tm.bad{border-color:#e0242b}
+.loading{color:var(--muted);padding:30px;text-align:center}
+.err{color:var(--r1t);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>新加速タイム</h1>
+  <span class="date" id="date"></span>
+</header>
+<main>
+  <section>
+    <h2>レース場</h2>
+    <div class="venues" id="venues"><div class="loading">読み込み中…</div></div>
+  </section>
+  <section id="raceSec" hidden>
+    <h2>レース</h2>
+    <div class="title" id="vtitle"></div>
+    <div class="races" id="races"></div>
+  </section>
+  <section id="dataSec" hidden>
+    <div class="bar">
+      <span class="race-name" id="raceName"></span>
+      <span class="spacer"></span>
+      <label class="auto"><input type="checkbox" id="auto"> 60秒ごとに自動更新</label>
+      <button class="btn" id="reload">更新</button>
+    </div>
+    <div id="data"></div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+let VENUES = [], cur = {jcd:null, rno:null}, timer = null, reqId = 0;
+// STATIC: GitHub Pages など、ローカルサーバが無いときは data/today.json（定期更新）を読む
+let STATIC = null;
+
+async function fetchStatic(){
+  const r = await fetch(`data/today.json?t=${Date.now()}`, {cache:'no-store'});
+  if (!r.ok) throw new Error(`データを読み込めません（${r.status}）`);
+  STATIC = await r.json();
+  return STATIC;
+}
+
+async function fetchVenues(){
+  try{
+    const r = await fetch('/api/venues', {cache:'no-store'});
+    if (r.ok && (r.headers.get('content-type') || '').includes('json')) return await r.json();
+  }catch(e){}
+  return await fetchStatic();
+}
+
+function showDate(j){
+  const d = j.day;
+  let s = `${d.slice(0,4)}年${+d.slice(4,6)}月${+d.slice(6)}日（本日）`;
+  if (STATIC) s += `　最終更新 ${j.updated_at.slice(11)}`;
+  $('#date').textContent = s;
+}
+
+async function loadVenues(){
+  const j = await fetchVenues();
+  VENUES = j.venues;
+  showDate(j);
+  const box = $('#venues'); box.innerHTML = '';
+  for (const v of VENUES){
+    const b = document.createElement('button');
+    const tag = !j.schedule_known ? '' : (v.open ? (v.original ? '開催中' : '開催中・展示のみ') : '非開催');
+    b.innerHTML = `${String(v.jcd).padStart(2,'0')} ${v.name}<small>${tag}</small>`;
+    if (j.schedule_known && !v.open) b.classList.add('closed');
+    b.onclick = () => selectVenue(v.jcd);
+    b.dataset.jcd = v.jcd; box.appendChild(b);
+  }
+  const last = +store.get('jcd');
+  const def = VENUES.find(v => v.jcd === last && v.open) || VENUES.find(v => v.open && v.original);
+  if (def) selectVenue(def.jcd, true);
+}
+
+function selectVenue(jcd, initial){
+  cur.jcd = jcd; store.set('jcd', jcd);
+  document.querySelectorAll('#venues button').forEach(b => b.classList.toggle('sel', +b.dataset.jcd === jcd));
+  const v = VENUES.find(x => x.jcd === jcd);
+  $('#raceSec').hidden = false;
+  $('#vtitle').textContent = v.title || (v.open ? '' : '本日は開催がない可能性があります');
+  const box = $('#races'); box.innerHTML = '';
+  for (let r = 1; r <= 12; r++){
+    const info = v.races[r];
+    const b = document.createElement('button');
+    b.innerHTML = `${r}R<small>${info && info.closed_at ? info.closed_at : '&nbsp;'}</small>`;
+    b.dataset.rno = r; b.onclick = () => selectRace(r);
+    box.appendChild(b);
+  }
+  // 既定のレース：締切前の最初のレース（なければ 12R / 1R）
+  let rno = 1;
+  const now = new Date(Date.now() + (9*60 + new Date().getTimezoneOffset())*60000);
+  const hm = now.getHours()*60 + now.getMinutes();
+  const ks = Object.keys(v.races).map(Number).sort((a,b)=>a-b);
+  if (ks.length){
+    const next = ks.find(k => { const t = v.races[k].closed_at; if(!t) return false; const [h,m]=t.split(':').map(Number); return h*60+m >= hm; });
+    rno = next || ks[ks.length-1];
+  }
+  selectRace(rno);
+}
+
+function selectRace(rno){
+  cur.rno = rno;
+  document.querySelectorAll('#races button').forEach(b => b.classList.toggle('sel', +b.dataset.rno === rno));
+  loadRace();
+}
+
+async function loadRace(refresh){
+  const id = ++reqId;
+  const v = VENUES.find(x => x.jcd === cur.jcd);
+  $('#dataSec').hidden = false;
+  const info = v.races[cur.rno];
+  $('#raceName').textContent = `${v.name} ${cur.rno}R` + (info && info.subtitle ? `　${info.subtitle}` : '');
+  $('#data').innerHTML = '<div class="loading">取得中…</div>';
+  try{
+    let j;
+    if (STATIC){
+      if (refresh){ await fetchStatic(); showDate(STATIC); }
+      j = STATIC.races[`${cur.jcd}-${cur.rno}`] || {jcd:cur.jcd, rno:cur.rno, venue:v.name, boats:[], courses:{}, has:{},
+        note: v.open ? 'このレースのデータはまだありません。締切の約90分前から、約10分ごとに更新されます。' : '本日は開催がありません。'};
+      j = JSON.parse(JSON.stringify(j));
+      if (j.fetched_at) j.note = `${j.note ? j.note + ' ' : ''}（データ取得 ${j.fetched_at}）`;
+    } else {
+      const r = await fetch(`/api/race?jcd=${cur.jcd}&rno=${cur.rno}`);
+      j = await r.json();
+    }
+    if (id !== reqId) return;
+    if (j.error) throw new Error(j.error);
+    render(j);
+  }catch(e){
+    if (id !== reqId) return;
+    $('#data').innerHTML = `<div class="err">取得に失敗しました：${esc(e.message)}</div>`;
+  }
+}
+
+function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
+
+// ---------------------------------------------------------------------------
+// 状態
+// ---------------------------------------------------------------------------
+let curRes = null;          // サーバから受け取ったレース情報（boats は編集用コピー）
+let editMode = false;       // 手入力モード
+const TIME_COLS = () => [
+  {key:'tenji',  label:'展示'},
+  {key:'lap',    label:(curRes && curRes.lap_label) || '一周'},
+  {key:'mawari', label:'まわり足'},
+  {key:'choku',  label:'直線'},
+];
+
+function ranks(boats, key){
+  const vals = boats.map(b => parseFloat(b[key])).filter(x => !isNaN(x));
+  return b => { const x = parseFloat(b[key]); if (isNaN(x)) return 0; return vals.filter(y => y < x).length + 1; };
+}
+
+// 入力値の変換：685→6.85、3676→36.76
+function parseTime(raw){
+  let s = String(raw ?? '').trim().replace(/[０-９．]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  if (!s || /^[-－ー.]+$/.test(s)) return null;
+  let v;
+  if (s.includes('.')) v = parseFloat(s);
+  else if (/^\d+$/.test(s)) v = parseInt(s, 10) / 100;
+  else return null;
+  return isFinite(v) && v > 0 ? v : null;
+}
+const fmt2 = v => v == null ? null : v.toFixed(2);
+
+// ---------------------------------------------------------------------------
+// 新加速タイム（計算ロジック.md）
+// ---------------------------------------------------------------------------
+const ACCEL = [
+  {key:'de', label:'出足',    w: 0.920, K:[279.74,282.91,286.64,287.98,288.66,288.68],  f:(E,T,S)=>T},
+  {key:'m1', label:'中間速1', w: 4.077, K:[799.64,804.98,813.00,814.99,816.39,816.56],  f:(E,T,S)=>T+S},
+  {key:'m2', label:'中間速2', w: 3.548, K:[519.55,520.95,522.25,522.60,523.07,523.27],  f:(E,T,S)=>S},
+  {key:'m3', label:'中間速3', w:-1.404, K:[1065.97,1068.57,1070.37,1070.53,1071.97,1072.36], f:(E,T,S)=>S+E},
+  {key:'no', label:'伸び',    w: 4.654, K:[537.30,539.41,539.83,540.44,540.52,540.56],  f:(E,T,S)=>E},
+];
+
+function calcAccel(boats){
+  if (boats.length !== 6) return {error:'6艇のデータがそろっていません'};
+  const rows = [];
+  let substituted = false;
+  for (const b of boats){
+    const E = parseFloat(b.tenji), T = parseFloat(b.mawari);
+    let S = parseFloat(b.choku);
+    if (!(E > 0) || !(T > 0)) return {error:'6艇すべての展示タイム・まわり足タイムがそろうと計算します'};
+    if (!(S > 0)){ S = E; substituted = true; }
+    const c = b.course;
+    const sp = {};
+    for (const a of ACCEL) sp[a.key] = a.K[c-1] / a.f(E,T,S);
+    rows.push({waku:b.waku, course:c, sp});
+  }
+  const avg = {};
+  for (const a of ACCEL) avg[a.key] = rows.reduce((s,r)=>s+r.sp[a.key],0) / 6;
+  for (const r of rows){
+    r.diff = {}; let p = 70;
+    for (const a of ACCEL){ r.diff[a.key] = r.sp[a.key] - avg[a.key]; p += a.w * r.diff[a.key]; }
+    r.power = Math.round(p);
+  }
+  // 順位：丸めた値の高い順、同値は同順位
+  const rankBy = (val) => r => 1 + rows.filter(o => val(o) > val(r)).length;
+  for (const a of ACCEL){
+    const f = rankBy(o => Math.round(o.sp[a.key]*10));
+    rows.forEach(r => (r.rk = r.rk || {}, r.rk[a.key] = f(r)));
+  }
+  const pf = rankBy(o => o.power);
+  rows.forEach(r => r.prank = pf(r));
+  return {rows, substituted};
+}
+
+// ---------------------------------------------------------------------------
+// 描画
+// ---------------------------------------------------------------------------
+function render(j){
+  curRes = j;
+  const crs = j.courses || {};
+  curRes.boats = j.boats.map(b => ({...b, course: +crs[b.waku] || b.waku}));
+  if (!curRes.boats.length && editMode) curRes.boats = [1,2,3,4,5,6].map(w => ({waku:w, name:'', toban:'', tenji:null, lap:null, mawari:null, choku:null, course:w}));
+  if (!curRes.boats.length){
+    $('#data').innerHTML = `<div class="loading">データがまだありません（展示航走前の可能性があります）</div>` + editToggle() + notes(j);
+    bindEditToggle();
+    return;
+  }
+  drawAll();
+}
+
+const boatBadge = w => `<span class="boat b${w}">${w}</span>`;
+
+function editToggle(){
+  return `<label class="auto edit-tg"><input type="checkbox" id="editMode" ${editMode?'checked':''}> 手入力で補正する</label>`;
+}
+function bindEditToggle(){
+  const t = $('#editMode');
+  if (t) t.onchange = e => { editMode = e.target.checked; render({...curRes, boats: curRes.boats.filter(b => editMode || b.tenji || b.mawari)}); };
+}
+
+function drawAll(){
+  const j = curRes, cols = TIME_COLS();
+  const rk = Object.fromEntries(cols.map(c => [c.key, ranks(j.boats, c.key)]));
+  let h = `<div class="sub-bar"><h3>展示タイム</h3>${editToggle()}</div>`;
+  if (editMode) h += `<div class="note">小数点なしの数字は下2桁を小数として読みます（685→6.85、3676→36.76）。</div>`;
+  h += '<div class="tbl-wrap"><table class="times"><thead><tr><th>進入</th><th>枠</th><th style="text-align:left">選手</th>';
+  for (const c of cols) h += `<th>${esc(c.label)}</th>`;
+  h += '</tr></thead><tbody id="timesBody">';
+  const ordered = [...j.boats].sort((a,b) => a.course - b.course || a.waku - b.waku);
+  for (const b of ordered){
+    h += `<tr class="drow" data-waku="${b.waku}">`;
+    h += `<td class="crs-cell"><button type="button" class="handle" title="ドラッグで進入コースを変更（↑↓キーでも可）" aria-label="${b.waku}号艇の進入コースを変更">⠿</button><span class="crs-val">${b.course}</span></td>`;
+    h += `<td>${boatBadge(b.waku)}</td>`;
+    h += `<td class="name">${esc(b.name)}${b.toban ? `<small>${esc(b.toban)}</small>` : ''}</td>`;
+    for (const c of cols){
+      const v = b[c.key];
+      if (editMode){ h += `<td class="num"><input class="tm" data-waku="${b.waku}" data-key="${c.key}" value="${esc(v ?? '')}" inputmode="decimal"></td>`; continue; }
+      if (!v){ h += `<td class="num na">-</td>`; continue; }
+      const r = rk[c.key](b);
+      h += `<td class="num ${r===1?'ac1':r===2?'ac2':r===3?'ac3':''}">${esc(v)}<span class="rk">${r}</span></td>`;
+    }
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
+  h += `<div class="legend">${editMode ? '' : '<span class="la1">1位（最速）</span><span class="la2">2位</span><span class="la3">3位</span><span>右下の小さな数字は順位</span>'}<span>行を上下にドラッグすると進入コースを変更できます</span></div>`;
+  h += `<div class="sub-bar"><h3>新加速タイム</h3><span class="unit">km/h</span></div><div id="accel"></div>`;
+  $('#data').innerHTML = h + notes(j);
+  bindEditToggle();
+  bindRowDrag();
+  document.querySelectorAll('input.tm').forEach(inp => inp.oninput = onTimeInput);
+  drawAccel();
+}
+
+// 行を上下にドラッグして進入コースを変更（上から 1〜6 コース）
+function applyRowOrder(){
+  const body = $('#timesBody'); if (!body) return;
+  [...body.querySelectorAll('tr.drow')].forEach((tr, i) => {
+    const b = curRes.boats.find(x => x.waku === +tr.dataset.waku);
+    b.course = i + 1;
+    tr.querySelector('.crs-val').textContent = i + 1;
+  });
+  drawAccel();
+}
+
+function bindRowDrag(){
+  const body = $('#timesBody'); if (!body) return;
+  let drag = null;
+  body.addEventListener('pointerdown', e => {
+    const tr = e.target.closest('tr.drow');
+    if (!tr || e.button > 0 || e.target.closest('input,a,select')) return;
+    // タッチではハンドルからのみ（ページのスクロールを妨げないため）
+    if (e.pointerType !== 'mouse' && !e.target.closest('.handle')) return;
+    e.preventDefault();
+    drag = {tr, id: e.pointerId};
+    tr.classList.add('dragging');
+    body.classList.add('is-dragging');
+    tr.setPointerCapture(e.pointerId);
+  });
+  body.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const others = [...body.querySelectorAll('tr.drow')].filter(r => r !== drag.tr);
+    const idx = others.filter(r => { const rc = r.getBoundingClientRect(); return rc.top + rc.height/2 < e.clientY; }).length;
+    const ref = others[idx] || null;
+    if (drag.tr.nextElementSibling !== ref || (ref === null && body.lastElementChild !== drag.tr)){
+      body.insertBefore(drag.tr, ref);
+      applyRowOrder();
+    }
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.tr.classList.remove('dragging');
+    body.classList.remove('is-dragging');
+    drag = null;
+  };
+  body.addEventListener('pointerup', end);
+  body.addEventListener('pointercancel', end);
+  // キーボード：ハンドルにフォーカスして ↑↓
+  body.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('handle') || !['ArrowUp','ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const tr = e.target.closest('tr.drow');
+    if (e.key === 'ArrowUp' && tr.previousElementSibling) body.insertBefore(tr, tr.previousElementSibling);
+    else if (e.key === 'ArrowDown' && tr.nextElementSibling) body.insertBefore(tr.nextElementSibling, tr);
+    else return;
+    applyRowOrder();
+    e.target.focus();
+  });
+}
+
+function onTimeInput(e){
+  const t = e.target, b = curRes.boats.find(x => x.waku === +t.dataset.waku);
+  const v = parseTime(t.value);
+  b[t.dataset.key] = fmt2(v);
+  t.classList.toggle('bad', t.value.trim() !== '' && v == null);
+  t.title = v == null ? '' : `→ ${fmt2(v)}`;
+  drawAccel();
+}
+
+function drawAccel(){
+  const box = $('#accel'); if (!box) return;
+  const r = calcAccel(curRes.boats);
+  if (r.error){ box.innerHTML = `<div class="loading">${esc(r.error)}</div>`; return; }
+  const rc = k => k===1?'ac1':k===2?'ac2':k===3?'ac3':'';
+  const rows = [...r.rows].sort((a,b) => a.course - b.course || a.waku - b.waku);
+  const cell = (row, a) => {
+    const d = Math.round(row.diff[a.key]*10)/10;
+    const ds = (d>0?'+':'') + (Object.is(d,-0)?0:d).toFixed(1);
+    return `<td class="av ${rc(row.rk[a.key])}"><div class="v">${row.sp[a.key].toFixed(1)}</div><div class="d ${d>=1.0?'plus':''}">${ds}</div></td>`;
+  };
+  // 左：新加速タイム表
+  let t = '<div class="tbl-wrap"><table class="accel"><thead>';
+  t += '<tr><th rowspan="2">進入・艇</th><th rowspan="2">出足</th><th colspan="3">中間速</th><th rowspan="2">伸び</th></tr>';
+  t += '<tr><th>中間速1</th><th>中間速2</th><th>中間速3</th></tr></thead><tbody>';
+  for (const row of rows){
+    t += `<tr><td class="cb"><span class="crs">${row.course}</span>${boatBadge(row.waku)}</td>`;
+    for (const a of ACCEL) t += cell(row, a);
+    t += '</tr>';
+  }
+  t += '</tbody></table></div>';
+  t += '<div class="legend"><span class="la1">1位</span><span class="la2">2位</span><span class="la3">3位</span><span>赤字の差：+1.0以上</span></div>';
+  // 右：エンジンパワー
+  const pct = p => Math.max(2, Math.min(100, 50 + 2.5 * (p - 70)));
+  let p = '<div class="power-panel"><h4>エンジンパワー</h4>';
+  for (const row of rows){
+    p += `<div class="prow"><span class="prk ${row.prank===1?'top':''}">${row.prank}位</span>${boatBadge(row.waku)}`;
+    p += `<div class="track"><div class="avg"></div><div class="bar ${row.prank===1?'top':''}" style="width:${pct(row.power)}%"></div><span class="pv">${row.power}</span></div></div>`;
+  }
+  p += '<div class="pnote">点線は平均の70。</div></div>';
+  let h = `<div class="accel-wrap"><div class="accel-left">${t}</div>${p}</div>`;
+  if (r.substituted) h += '<div class="note warn">直線タイムがない艇は「直線＝展示タイム」として計算しています（この場合、パワーは展示タイムの影響を強く受けます）。</div>';
+  h += '<div class="note">定数と重みは、びわこの3レース分の新加速タイム表から推定した値です。計測区間が違うレース場では値の大きさがずれることがあります（例：まわり足が11秒台の場では出足が小さく出ます）が、6艇の比較（平均との差・順位）には使えます。周回タイムは計算に使いません。</div>';
+  box.innerHTML = h;
+}
+
+function notes(j){
+  let n = '';
+  if (j.note) n += `<div class="note warn">${esc(j.note)}</div>`;
+  const src = [];
+  if (j.source) src.push(`<a href="${esc(j.source)}" target="_blank" rel="noopener">${j.original ? '独自計測データ元' : 'データ元'}</a>`);
+  if (j.official_source && j.official_source !== j.source) src.push(`<a href="${esc(j.official_source)}" target="_blank" rel="noopener">公式 直前情報</a>`);
+  if (j.original) n += `<div class="note">${esc(j.lap_label)}・まわり足・直線は各レース場の独自計測値です。計測できなかった項目は「-」で表示します。</div>`;
+  if (src.length) n += `<div class="note">${src.join('　')}</div>`;
+  return n;
+}
+
+$('#reload').onclick = () => cur.jcd && loadRace(true);
+$('#auto').onchange = e => {
+  clearInterval(timer); timer = null;
+  if (e.target.checked) timer = setInterval(() => cur.jcd && !editMode && loadRace(true), 60000);
+};
+loadVenues().catch(e => { $('#venues').innerHTML = `<div class="err">サーバに接続できません：${esc(e.message)}</div>` });
+</script>
+</body>
+</html>
