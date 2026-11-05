@@ -71,10 +71,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    # Render などのクラウドでは PORT が渡されるので、外部から受け付ける
+    hosted = "RENDER" in os.environ or "--public" in sys.argv
+    host = "0.0.0.0" if hosted else "127.0.0.1"
+    srv = ThreadingHTTPServer((host, PORT), Handler)
     url = f"http://localhost:{PORT}/"
-    print(f"オリジナル展示タイム ビューア: {url}  (Ctrl+C で終了)")
-    if "--no-browser" not in sys.argv:
+    print(f"新加速タイム: {url}  (Ctrl+C で終了)", flush=True)
+    if not hosted and "--no-browser" not in sys.argv:
         try:
             webbrowser.open(url)
         except Exception:  # noqa: BLE001

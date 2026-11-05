@@ -1,0 +1,14 @@
+# Render（https://render.com）用の設定。各レース場サイトからその場で取得するサーバを公開します。
+services:
+  - type: web
+    name: shinkasoku-time
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: echo "標準ライブラリのみのためビルド不要"
+    startCommand: python server.py
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"

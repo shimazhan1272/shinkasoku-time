@@ -68,7 +68,7 @@ VENUES = {
 _cache = {}
 
 
-def fetch(url, data=None, ttl=45):
+def fetch(url, data=None, ttl=20):
     key = (url, data)
     hit = _cache.get(key)
     if hit and time.time() - hit[0] < ttl:
