@@ -444,6 +444,31 @@ def get_schedule(day):
             }
     except Exception:  # noqa: BLE001
         pass
+    if not out:
+        out = get_schedule_official(day)
+    return out
+
+
+def get_schedule_official(day):
+    """Open API が未更新のとき、boatrace.jp のレース一覧から開催場と締切予定時刻を取る。"""
+    base = "https://www.boatrace.jp/owpc/pc/race"
+    out = {}
+    try:
+        idx = fetch(f"{base}/index?hd={day}", ttl=600)
+    except Exception:  # noqa: BLE001
+        return out
+    for jcd in sorted({int(j) for j in re.findall(rf"raceindex\?jcd=(\d+)&amp;hd={day}", idx)}):
+        try:
+            t = fetch(f"{base}/raceindex?jcd={jcd:02d}&hd={day}", ttl=600)
+        except Exception:  # noqa: BLE001
+            continue
+        m = re.search(r'class="heading2_titleName">(.*?)<', t)
+        s = {"title": _norm(m.group(1)) if m else "", "races": {}}
+        for rno, hm in re.findall(
+                r'racelist\?rno=(\d+)&amp;jcd=\d+&amp;hd=\d+">\d+R</a>\s*</td>\s*<td>(\d{1,2}:\d{2})</td>', t):
+            s["races"][int(rno)] = {"closed_at": hm.zfill(5), "subtitle": ""}
+        if s["races"]:
+            out[jcd] = s
     return out
 
 
