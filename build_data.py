@@ -115,7 +115,8 @@ def main():
     with open(os.path.join(out, "data", "today.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     here = os.path.dirname(os.path.abspath(__file__))
-    shutil.copy(os.path.join(here, "index.html"), os.path.join(out, "index.html"))
+    for name in ("index.html", "icon.svg", "icon-180.png"):
+        shutil.copy(os.path.join(here, name), os.path.join(out, name))
     open(os.path.join(out, ".nojekyll"), "w").close()
     print(f"{day} {now:%H:%M} 取得 {fetched} レース / 保存 {len(races)} レース")
 
