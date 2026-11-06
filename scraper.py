@@ -41,7 +41,7 @@ VENUES = {
              path="group-tenji.php?type=group-tenji&day={d}&race={r}&if=1&kind=1"),
     10: dict(name="三国", kind="jlc", base="https://www.boatrace-mikuni.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
-    11: dict(name="びわこ", kind="jlc", base="https://www.boatrace-biwako.jp",
+    11: dict(name="琵琶湖", kind="jlc", base="https://www.boatrace-biwako.jp",
              path="cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
     12: dict(name="住之江", kind="asp", base="https://www.boatrace-suminoe.jp", page="st02"),
     13: dict(name="尼崎", kind="jlc", base="https://www.boatrace-amagasaki.jp",
@@ -60,7 +60,7 @@ VENUES = {
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
     22: dict(name="福岡", kind="jlc", base="https://www.boatrace-fukuoka.com",
              path="tenji_info.php?day={d}&race={r}&if=1"),
-    23: dict(name="からつ", kind="jlc", base="https://www.boatrace-karatsu.jp",
+    23: dict(name="唐津", kind="jlc", base="https://www.boatrace-karatsu.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
     24: dict(name="大村", kind="official"),
 }
