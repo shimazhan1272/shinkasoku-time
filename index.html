@@ -39,6 +39,8 @@ h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;letter-spac
   border-radius:8px;padding:8px 4px;cursor:pointer;line-height:1.2}
 .venues button small{display:block;font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 .venues button.closed{color:var(--off)}
+.venues button small.soon{color:#ff4d5e;font-weight:700}
+.venues button.sel small.soon{color:#ffe3e6;background:#d92d43;border-radius:4px;padding:0 4px;width:fit-content;margin:2px auto 0}
 .venues button.closed small{color:var(--off)}
 .venues button.sel,.races button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
 .venues button.sel small,.races button.sel small{color:#ffffffcc}
@@ -254,7 +256,7 @@ function nextRace(v){
   for (const k of ks){
     const t = v.races[k].closed_at; if (!t) continue;
     const [h,m] = t.split(':').map(Number);
-    if (h*60+m >= hm) return {rno:k, closed_at:t};
+    if (h*60+m >= hm) return {rno:k, closed_at:t, left:h*60+m-hm};
   }
   return null;
 }
@@ -267,6 +269,7 @@ function updateNextRaces(){
     if (!v.open){ el.innerHTML = '&nbsp;'; return; }
     const n = nextRace(v);
     el.textContent = n ? `${n.rno}R ${n.closed_at}` : (Object.keys(v.races||{}).length ? '本日終了' : '');
+    el.classList.toggle('soon', !!n && n.left <= 10);   // 締切10分前から赤字
     if (!el.textContent) el.innerHTML = '&nbsp;';
   });
 }
