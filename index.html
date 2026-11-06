@@ -37,7 +37,7 @@ h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;letter-spac
 .venues{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
 .venues button,.races button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--text);
   border-radius:8px;padding:8px 4px;cursor:pointer;line-height:1.2}
-.venues button small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.venues button small{display:block;font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 .venues button.closed{color:var(--off)}
 .venues button.closed small{color:var(--off)}
 .venues button.sel,.races button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -227,15 +227,48 @@ async function loadVenues(){
   const box = $('#venues'); box.innerHTML = '';
   for (const v of VENUES){
     const b = document.createElement('button');
-    b.textContent = `${String(v.jcd).padStart(2,'0')}_${v.name}`;
+    b.innerHTML = `${String(v.jcd).padStart(2,'0')}_${esc(v.name)}<small class="next"></small>`;
     if (j.schedule_known && !v.open) b.title = '本日は開催なし';
     if (j.schedule_known && !v.open) b.classList.add('closed');
     b.onclick = () => selectVenue(v.jcd);
     b.dataset.jcd = v.jcd; box.appendChild(b);
   }
+  updateNextRaces();
+  clearInterval(window.__nextTimer);
+  window.__nextTimer = setInterval(updateNextRaces, 30000);   // 締切が過ぎたら次のレースへ
   const last = +store.get('jcd');
   const def = VENUES.find(v => v.jcd === last && v.open) || VENUES.find(v => v.open && v.original);
   if (def) selectVenue(def.jcd, true);
+}
+
+// 日本時間の現在時刻（分）
+function nowJstMinutes(){
+  const now = new Date(Date.now() + (9*60 + new Date().getTimezoneOffset())*60000);
+  return now.getHours()*60 + now.getMinutes();
+}
+
+// 締切前で一番近いレース（なければ null）
+function nextRace(v){
+  const hm = nowJstMinutes();
+  const ks = Object.keys(v.races || {}).map(Number).sort((a,b)=>a-b);
+  for (const k of ks){
+    const t = v.races[k].closed_at; if (!t) continue;
+    const [h,m] = t.split(':').map(Number);
+    if (h*60+m >= hm) return {rno:k, closed_at:t};
+  }
+  return null;
+}
+
+// レース場ボタンの下に「8R 15:22」を表示
+function updateNextRaces(){
+  document.querySelectorAll('#venues button').forEach(b => {
+    const v = VENUES.find(x => x.jcd === +b.dataset.jcd);
+    const el = b.querySelector('small.next'); if (!v || !el) return;
+    if (!v.open){ el.innerHTML = '&nbsp;'; return; }
+    const n = nextRace(v);
+    el.textContent = n ? `${n.rno}R ${n.closed_at}` : (Object.keys(v.races||{}).length ? '本日終了' : '');
+    if (!el.textContent) el.innerHTML = '&nbsp;';
+  });
 }
 
 function selectVenue(jcd, initial){
