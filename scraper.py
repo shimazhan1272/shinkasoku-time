@@ -6,6 +6,7 @@ import re
 import time
 import json
 import html
+import urllib.error
 import urllib.request
 import urllib.parse
 from html.parser import HTMLParser
@@ -19,12 +20,14 @@ TIMEOUT = 20
 #     jlc       : {base}/modules/yosou/<path>  (day, race を埋め込む)
 #     asp       : {base}/asp/kyogi/<jcd>/pc/<page><rr>.htm  (当日のみ・日付指定不可)
 #     miyajima  : POST race_common/require/kaisai_reload.php
+#     toda      : {base}/xml/kaisai/<YYYYMMDD>/race_table_original_<rr>.xml
+#                 (ttime=展示, rnd=一周, cnr=まわり足, str=直線)
 #     official  : 独自計測なし。boatrace.jp の直前情報から展示タイムのみ
 # ---------------------------------------------------------------------------
 VENUES = {
     1:  dict(name="桐生", kind="jlc", base="https://www.kiryu-kyotei.com",
              path="cyokuzen.php?day={d}&race={r}&if=1"),
-    2:  dict(name="戸田", kind="official"),
+    2:  dict(name="戸田", kind="toda", base="https://www.boatrace-toda.jp"),
     3:  dict(name="江戸川", kind="official"),
     4:  dict(name="平和島", kind="asp", base="https://www.heiwajima.gr.jp", page="yoso05"),
     5:  dict(name="多摩川", kind="jlc", base="https://www.boatrace-tamagawa.com",
@@ -291,6 +294,30 @@ def parse_original_table(page):
     return best[1] if best else None
 
 
+def parse_toda_xml(text):
+    """戸田の race_table_original_XX.xml（record ごとに1艇）を解析する。"""
+    def tag(rec, name):
+        m = re.search(rf"<{name}>(.*?)</{name}>", rec, re.S)
+        return _norm(m.group(1)) if m else ""
+
+    boats = {}
+    for rec in re.findall(r"<record>(.*?)</record>", text, re.S):
+        w = tag(rec, "teiban")
+        if not re.fullmatch(r"[1-6]", w) or int(w) in boats:
+            continue
+        boats[int(w)] = {
+            "waku": int(w), "name": tag(rec, "name"), "toban": "",
+            "tenji": _val(tag(rec, "ttime")),
+            "lap": _val(tag(rec, "rnd")),
+            "mawari": _val(tag(rec, "cnr")),
+            "choku": _val(tag(rec, "str")),
+        }
+    if not boats:
+        return None
+    return {"lap_label": "一周", "boats": [boats[k] for k in sorted(boats)],
+            "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
+
+
 # ---------------------------------------------------------------------------
 # 公式サイト（展示タイムのみ）
 # ---------------------------------------------------------------------------
@@ -344,6 +371,14 @@ def get_race(jcd, rno, day):
             res["source"] = url
             data = parse_original_table(fetch(url))
             res["note"] = "このレース場のページは当日分のみ公開されています。"
+        elif kind == "toda":
+            url = f'{v["base"]}/xml/kaisai/{day}/race_table_original_{rno:02d}.xml'
+            res["source"] = v["base"] + "/"
+            try:
+                data = parse_toda_xml(fetch(url))
+            except urllib.error.HTTPError as e:
+                if e.code != 404:  # 404 = 展示前でまだファイルが無い
+                    raise
         elif kind == "miyajima":
             url = v["base"] + "/race_common/require/kaisai_reload.php"
             res["source"] = v["base"] + "/"
