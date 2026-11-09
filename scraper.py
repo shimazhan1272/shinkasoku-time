@@ -22,6 +22,7 @@ TIMEOUT = 20
 #     miyajima  : POST race_common/require/kaisai_reload.php
 #     toda      : {base}/xml/kaisai/<YYYYMMDD>/race_table_original_<rr>.xml
 #                 (ttime=展示, rnd=一周, cnr=まわり足, str=直線)
+#     gamagori  : {base}/asp/gamagori/kyogi/kyogihtml/time/time<YYYYMMDD>07<rr>.htm
 #     official  : 独自計測なし。boatrace.jp の直前情報から展示タイムのみ
 # ---------------------------------------------------------------------------
 VENUES = {
@@ -34,7 +35,7 @@ VENUES = {
              path="oriten.php?day={d}&race={r}&jo=05&if=1"),
     6:  dict(name="浜名湖", kind="jlc", base="https://www.boatrace-hamanako.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
-    7:  dict(name="蒲郡", kind="official"),
+    7:  dict(name="蒲郡", kind="gamagori", base="https://www.gamagori-kyotei.com"),
     8:  dict(name="常滑", kind="jlc", base="https://www.boatrace-tokoname.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
     9:  dict(name="津", kind="jlc", base="https://www.boatrace-tsu.com",
@@ -318,6 +319,25 @@ def parse_toda_xml(text):
             "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
 
 
+def parse_gamagori(page):
+    """蒲郡のオリジナル展示ページ（展示・一周・まわり足・直線）を解析する。"""
+    boats = {}
+    parts = re.split(r'<td class="waku w([1-6])">', page)
+    for w, seg in zip(parts[1::2], parts[2::2]):
+        seg = seg.split("</tr>")[0]
+        m = re.search(r'<div class="name">.*?<a[^>]*>(.*?)</a>', seg, re.S)
+        vals = [_val(_norm(re.sub(r"<[^>]+>", "", x)))
+                for x in re.findall(r'<td class="score[^"]*">(.*?)</td>', seg, re.S)]
+        if len(vals) < 4 or int(w) in boats:
+            continue
+        boats[int(w)] = {"waku": int(w), "name": _norm(m.group(1)) if m else "", "toban": "",
+                         "tenji": vals[0], "lap": vals[1], "mawari": vals[2], "choku": vals[3]}
+    if not boats:
+        return None
+    return {"lap_label": "一周", "boats": [boats[k] for k in sorted(boats)],
+            "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
+
+
 # ---------------------------------------------------------------------------
 # 公式サイト（展示タイムのみ）
 # ---------------------------------------------------------------------------
@@ -378,6 +398,14 @@ def get_race(jcd, rno, day):
                 data = parse_toda_xml(fetch(url))
             except urllib.error.HTTPError as e:
                 if e.code != 404:  # 404 = 展示前でまだファイルが無い
+                    raise
+        elif kind == "gamagori":
+            url = f'{v["base"]}/asp/gamagori/kyogi/kyogihtml/time/time{day}{jcd:02d}{rno:02d}.htm'
+            res["source"] = url
+            try:
+                data = parse_gamagori(fetch(url))
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
                     raise
         elif kind == "miyajima":
             url = v["base"] + "/race_common/require/kaisai_reload.php"
