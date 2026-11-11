@@ -292,6 +292,8 @@ function updateNextRaces(){
 
 function selectVenue(jcd, initial){
   cur.jcd = jcd; store.set('jcd', jcd);
+  // 展示済みのレースをサーバに裏で先に取得してもらう（結果は待たない）
+  if (!STATIC) fetch(`/api/prefetch?jcd=${jcd}`, {cache:'no-store'}).catch(()=>{});
   document.querySelectorAll('#venues button').forEach(b => b.classList.toggle('sel', +b.dataset.jcd === jcd));
   const v = VENUES.find(x => x.jcd === jcd);
   $('#raceSec').hidden = false;

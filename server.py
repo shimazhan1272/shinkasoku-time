@@ -5,6 +5,7 @@
 import json
 import os
 import sys
+import re
 import time
 import threading
 import datetime
@@ -74,6 +75,51 @@ def get_race_cached(jcd, rno, day, refresh=False):
     return res
 
 
+# レース場を選んだら、展示済みのレースを裏で順番に取得して保存しておく
+PREFETCH_AHEAD_MIN = 30      # 締切30分前を過ぎたレース（展示航走が済んでいる見込み）を対象にする
+PREFETCHING = set()
+PREFETCH_LOCK = threading.Lock()
+
+
+def _prefetch_targets(jcd, day):
+    races = (scraper.get_schedule(day).get(jcd) or {}).get("races", {})
+    now = datetime.datetime.now(JST)
+    now_min = now.hour * 60 + now.minute
+    with FINAL_LOCK:
+        done = set(_load_final(day))
+    out = []
+    for rno, info in sorted(races.items()):
+        t = info.get("closed_at") or ""
+        if not re.fullmatch(r"\d{1,2}:\d{2}", t):
+            continue
+        h, m = map(int, t.split(":"))
+        if h * 60 + m - now_min <= PREFETCH_AHEAD_MIN and f"{jcd}-{rno}" not in done:
+            out.append(int(rno))
+    return out
+
+
+def _prefetch_worker(jcd, day):
+    try:
+        for rno in _prefetch_targets(jcd, day):
+            try:
+                get_race_cached(jcd, rno, day)
+            except Exception:  # noqa: BLE001
+                pass
+            time.sleep(0.5)  # 相手サイトへの負担を抑える
+    finally:
+        with PREFETCH_LOCK:
+            PREFETCHING.discard(jcd)
+
+
+def start_prefetch(jcd, day):
+    with PREFETCH_LOCK:
+        if jcd in PREFETCHING:
+            return False
+        PREFETCHING.add(jcd)
+    threading.Thread(target=_prefetch_worker, args=(jcd, day), daemon=True).start()
+    return True
+
+
 def today():
     return datetime.datetime.now(JST).strftime("%Y%m%d")
 
@@ -125,6 +171,11 @@ class Handler(BaseHTTPRequestHandler):
                         "races": s["races"] if s else {},
                     })
                 return self._send(200, {"day": day, "schedule_known": bool(sched), "venues": venues})
+            if u.path == "/api/prefetch":
+                jcd = int(q["jcd"])
+                if jcd not in scraper.VENUES:
+                    return self._send(400, {"error": "invalid jcd"})
+                return self._send(200, {"started": start_prefetch(jcd, today())})
             if u.path == "/api/race":
                 jcd, rno = int(q["jcd"]), int(q["rno"])
                 if jcd not in scraper.VENUES or not 1 <= rno <= 12:
