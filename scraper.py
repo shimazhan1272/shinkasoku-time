@@ -454,6 +454,17 @@ def get_race(jcd, rno, day):
     return res
 
 
+def is_complete(res):
+    """6艇すべての取得対象タイムがそろっていれば True（以後は取り直さない）。"""
+    boats = res.get("boats") or []
+    if len(boats) != 6:
+        return False
+    keys = [k for k in ("tenji", "lap", "mawari", "choku") if (res.get("has") or {}).get(k)]
+    if not keys or (VENUES[res["jcd"]]["kind"] != "official" and not res.get("original")):
+        return False
+    return all(b.get(k) for b in boats for k in keys)
+
+
 # ---------------------------------------------------------------------------
 # 本日の開催一覧（Boatrace Open API）
 # ---------------------------------------------------------------------------

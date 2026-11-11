@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+import threading
 import datetime
 import webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -24,6 +25,53 @@ STATIC_FILES = {
     "/favicon.ico": ("icon-180.png", "image/png"),
     "/apple-touch-icon.png": ("icon-180.png", "image/png"),
 }
+
+
+# 6艇分のタイムがそろったレースは保存し、以後は取り直さない（「更新」ボタンのときだけ取り直す）
+CACHE_DIR = os.path.join(HERE, "cache")
+FINAL = {}
+FINAL_LOCK = threading.Lock()
+
+
+def _cache_file(day):
+    return os.path.join(CACHE_DIR, f"{day}.json")
+
+
+def _load_final(day):
+    if day in FINAL:
+        return FINAL[day]
+    data = {}
+    try:
+        with open(_cache_file(day), encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:  # noqa: BLE001
+        pass
+    FINAL.clear()          # 前日分はメモリから捨てる
+    FINAL[day] = data
+    return data
+
+
+def get_race_cached(jcd, rno, day, refresh=False):
+    key = f"{jcd}-{rno}"
+    with FINAL_LOCK:
+        hit = _load_final(day).get(key)
+    if hit and not refresh:
+        return hit
+    res = scraper.get_race(jcd, rno, day)
+    res["complete"] = scraper.is_complete(res)
+    if res["complete"]:
+        with FINAL_LOCK:
+            data = _load_final(day)
+            data[key] = res
+            try:
+                os.makedirs(CACHE_DIR, exist_ok=True)
+                tmp = _cache_file(day) + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False)
+                os.replace(tmp, _cache_file(day))
+            except Exception:  # noqa: BLE001
+                pass
+    return res
 
 
 def today():
@@ -81,7 +129,7 @@ class Handler(BaseHTTPRequestHandler):
                 jcd, rno = int(q["jcd"]), int(q["rno"])
                 if jcd not in scraper.VENUES or not 1 <= rno <= 12:
                     return self._send(400, {"error": "invalid jcd/rno"})
-                return self._send(200, scraper.get_race(jcd, rno, today()))
+                return self._send(200, get_race_cached(jcd, rno, today(), refresh=q.get("refresh") == "1"))
             return self._send(404, {"error": "not found"})
         except Exception as e:  # noqa: BLE001
             return self._send(500, {"error": str(e)})

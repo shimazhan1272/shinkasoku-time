@@ -196,7 +196,22 @@ const store = {
   get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
   set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
 };
-let VENUES = [], cur = {jcd:null, rno:null}, timer = null, reqId = 0;
+let VENUES = [], cur = {jcd:null, rno:null}, timer = null, reqId = 0, DAY = '';
+
+// 6艇分のタイムがそろったレースはブラウザに保存し、次からはすぐ表示する（「更新」で取り直し）
+const raceCache = {
+  key(jcd, rno){ return `race:${DAY}:${jcd}:${rno}` },
+  get(jcd, rno){ try{ return JSON.parse(localStorage.getItem(this.key(jcd, rno)) || 'null') }catch(e){ return null } },
+  set(jcd, rno, j){ try{ localStorage.setItem(this.key(jcd, rno), JSON.stringify(j)) }catch(e){} },
+  prune(){   // 前日以前の保存分を消す
+    try{
+      for (let i = localStorage.length - 1; i >= 0; i--){
+        const k = localStorage.key(i);
+        if (k && k.startsWith('race:') && !k.startsWith(`race:${DAY}:`)) localStorage.removeItem(k);
+      }
+    }catch(e){}
+  }
+};
 // STATIC: GitHub Pages など、ローカルサーバが無いときは data/today.json（定期更新）を読む
 let STATIC = null;
 
@@ -225,6 +240,7 @@ function showDate(j){
 async function loadVenues(){
   const j = await fetchVenues();
   VENUES = j.venues;
+  DAY = j.day; raceCache.prune();
   showDate(j);
   const box = $('#venues'); box.innerHTML = '';
   for (const v of VENUES){
@@ -322,8 +338,14 @@ async function loadRace(refresh){
       j = JSON.parse(JSON.stringify(j));
       if (j.fetched_at) j.note = `${j.note ? j.note + ' ' : ''}（データ取得 ${j.fetched_at}）`;
     } else {
-      const r = await fetch(`/api/race?jcd=${cur.jcd}&rno=${cur.rno}`);
-      j = await r.json();
+      const saved = !refresh && raceCache.get(cur.jcd, cur.rno);
+      if (saved){
+        j = saved;
+      } else {
+        const r = await fetch(`/api/race?jcd=${cur.jcd}&rno=${cur.rno}${refresh ? '&refresh=1' : ''}`);
+        j = await r.json();
+        if (j.complete && j.day === DAY) raceCache.set(cur.jcd, cur.rno, j);
+      }
     }
     if (id !== reqId) return;
     if (j.error) throw new Error(j.error);
