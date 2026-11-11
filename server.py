@@ -95,7 +95,7 @@ def _prefetch_targets(jcd, day):
         h, m = map(int, t.split(":"))
         if h * 60 + m - now_min <= PREFETCH_AHEAD_MIN and f"{jcd}-{rno}" not in done:
             out.append(int(rno))
-    return out
+    return sorted(out, reverse=True)   # 見る可能性が高い直近のレースから
 
 
 def _prefetch_worker(jcd, day):
