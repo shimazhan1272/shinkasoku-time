@@ -23,6 +23,7 @@ TIMEOUT = 20
 #     toda      : {base}/xml/kaisai/<YYYYMMDD>/race_table_original_<rr>.xml
 #                 (ttime=展示, rnd=一周, cnr=まわり足, str=直線)
 #     gamagori  : {base}/asp/gamagori/kyogi/kyogihtml/time/time<YYYYMMDD>07<rr>.htm
+#     omura     : {base}/yosou/include/new_top_iframe_chokuzen_2.php?day=<YYYYMMDD>&race=<rr>
 #     official  : 独自計測なし。boatrace.jp の直前情報から展示タイムのみ
 # ---------------------------------------------------------------------------
 VENUES = {
@@ -63,7 +64,7 @@ VENUES = {
              path="tenji_info.php?day={d}&race={r}&if=1"),
     23: dict(name="唐津", kind="jlc", base="https://www.boatrace-karatsu.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
-    24: dict(name="大村", kind="official"),
+    24: dict(name="大村", kind="omura", base="https://www.omurakyotei.jp"),
 }
 
 
@@ -338,6 +339,29 @@ def parse_gamagori(page):
             "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
 
 
+def parse_omura(page):
+    """大村の直前情報（展示T・一周・回り足・直線）を解析する。行は進入順、艇番は teiN のクラス。"""
+    i = page.find('id="tblchokuzen_detail"')
+    if i < 0:
+        return None
+    seg = page[i:].split("</table>")[0]
+    boats = {}
+    for row in re.findall(r"<tr>(.*?)</tr>", seg, re.S):
+        m = re.search(r'<th class="tei([1-6])">[^<]*</th>\s*<th class="tei\d">(.*?)</th>', row, re.S)
+        if not m:
+            continue
+        w = int(m.group(1))
+        tds = [_val(_norm(re.sub(r"<[^>]+>", "", x))) for x in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        if len(tds) < 5 or w in boats:
+            continue
+        boats[w] = {"waku": w, "name": _norm(m.group(2)), "toban": "",
+                    "tenji": tds[1], "lap": tds[2], "mawari": tds[3], "choku": tds[4]}
+    if not boats:
+        return None
+    return {"lap_label": "一周", "boats": [boats[k] for k in sorted(boats)],
+            "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
+
+
 # ---------------------------------------------------------------------------
 # 公式サイト（展示タイムのみ）
 # ---------------------------------------------------------------------------
@@ -407,6 +431,10 @@ def get_race(jcd, rno, day):
             except urllib.error.HTTPError as e:
                 if e.code != 404:
                     raise
+        elif kind == "omura":
+            url = f'{v["base"]}/yosou/include/new_top_iframe_chokuzen_2.php?day={day}&race={rno:02d}'
+            res["source"] = url
+            data = parse_omura(fetch(url))
         elif kind == "miyajima":
             url = v["base"] + "/race_common/require/kaisai_reload.php"
             res["source"] = v["base"] + "/"

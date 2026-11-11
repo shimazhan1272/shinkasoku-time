@@ -30,12 +30,13 @@ STATIC_FILES = {
 
 # 6艇分のタイムがそろったレースは保存し、以後は取り直さない（「更新」ボタンのときだけ取り直す）
 CACHE_DIR = os.path.join(HERE, "cache")
+CACHE_VERSION = 2   # 取得方法を変えたら上げる（古い保存分は使わない）
 FINAL = {}
 FINAL_LOCK = threading.Lock()
 
 
 def _cache_file(day):
-    return os.path.join(CACHE_DIR, f"{day}.json")
+    return os.path.join(CACHE_DIR, f"v{CACHE_VERSION}-{day}.json")
 
 
 def _load_final(day):
