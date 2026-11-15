@@ -24,6 +24,7 @@ TIMEOUT = 20
 #                 (ttime=展示, rnd=一周, cnr=まわり足, str=直線)
 #     gamagori  : {base}/asp/gamagori/kyogi/kyogihtml/time/time<YYYYMMDD>07<rr>.htm
 #     omura     : {base}/yosou/include/new_top_iframe_chokuzen_2.php?day=<YYYYMMDD>&race=<rr>
+#     tokuyama  : {base}/modules/yosou/tenji.php?day=<YYYYMMDD>&race=<r>&if=1（直線なし）
 #     official  : 独自計測なし。boatrace.jp の直前情報から展示タイムのみ
 # ---------------------------------------------------------------------------
 VENUES = {
@@ -53,7 +54,7 @@ VENUES = {
     15: dict(name="丸亀", kind="asp", base="https://www.marugameboat.jp", page="st02"),
     16: dict(name="児島", kind="asp", base="https://www.kojimaboat.jp", page="st02"),
     17: dict(name="宮島", kind="miyajima", base="https://www.boatrace-miyajima.com"),
-    18: dict(name="徳山", kind="official"),
+    18: dict(name="徳山", kind="tokuyama", base="https://www.boatrace-tokuyama.jp"),
     19: dict(name="下関", kind="jlc", base="https://www.boatrace-shimonoseki.jp",
              path="group-cyokuzen.php?day={d}&race={r}&if=1&kind=2"),
     20: dict(name="若松", kind="jlc", base="https://www.wmb.jp",
@@ -362,6 +363,28 @@ def parse_omura(page):
             "has": {"tenji": True, "lap": True, "mawari": True, "choku": True}}
 
 
+def parse_tokuyama(page):
+    """徳山の展示情報（展示タイム=col10・一周=col11・まわり足=col12。直線はなし）を解析する。"""
+    boats = {}
+    parts = re.split(r'<td class="col2 tei_color([1-6]) waku"', page)
+    for w, seg in zip(parts[1::2], parts[2::2]):
+        seg = seg.split("</tr>")[0]
+        def col(n):
+            m = re.search(rf'<td class="col{n}[ "][^>]*>(.*?)</td>', seg, re.S)
+            return _val(_norm(re.sub(r"<[^>]+>", "", m.group(1)))) if m else None
+        m = re.search(r"class='com-rname'>.*?<a[^>]*>(.*?)</a>", seg, re.S)
+        t = re.search(r"class='com-toban'>[^/<]*/(\d+)<", seg)
+        if int(w) in boats:
+            continue
+        boats[int(w)] = {"waku": int(w), "name": _norm(m.group(1)) if m else "",
+                         "toban": t.group(1) if t else "",
+                         "tenji": col(10), "lap": col(11), "mawari": col(12), "choku": None}
+    if not boats:
+        return None
+    return {"lap_label": "一周", "boats": [boats[k] for k in sorted(boats)],
+            "has": {"tenji": True, "lap": True, "mawari": True, "choku": False}}
+
+
 # ---------------------------------------------------------------------------
 # 公式サイト（展示タイムのみ）
 # ---------------------------------------------------------------------------
@@ -435,6 +458,10 @@ def get_race(jcd, rno, day):
             url = f'{v["base"]}/yosou/include/new_top_iframe_chokuzen_2.php?day={day}&race={rno:02d}'
             res["source"] = url
             data = parse_omura(fetch(url))
+        elif kind == "tokuyama":
+            url = f'{v["base"]}/modules/yosou/tenji.php?day={day}&race={rno}&if=1'
+            res["source"] = url
+            data = parse_tokuyama(fetch(url))
         elif kind == "miyajima":
             url = v["base"] + "/race_common/require/kaisai_reload.php"
             res["source"] = v["base"] + "/"
