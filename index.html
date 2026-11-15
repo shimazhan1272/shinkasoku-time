@@ -200,7 +200,7 @@ let VENUES = [], cur = {jcd:null, rno:null}, timer = null, reqId = 0, DAY = '';
 
 // 6艇分のタイムがそろったレースはブラウザに保存し、次からはすぐ表示する（「更新」で取り直し）
 const raceCache = {
-  prefix(){ return `race:v2:${DAY}:` },   // 取得方法を変えたら v を上げて古い保存分を捨てる
+  prefix(){ return `race:v3:${DAY}:` },   // 取得方法を変えたら v を上げて古い保存分を捨てる
   key(jcd, rno){ return `${this.prefix()}${jcd}:${rno}` },
   get(jcd, rno){ try{ return JSON.parse(localStorage.getItem(this.key(jcd, rno)) || 'null') }catch(e){ return null } },
   set(jcd, rno, j){ try{ localStorage.setItem(this.key(jcd, rno), JSON.stringify(j)) }catch(e){} },

@@ -30,7 +30,7 @@ STATIC_FILES = {
 
 # 6艇分のタイムがそろったレースは保存し、以後は取り直さない（「更新」ボタンのときだけ取り直す）
 CACHE_DIR = os.path.join(HERE, "cache")
-CACHE_VERSION = 2   # 取得方法を変えたら上げる（古い保存分は使わない）
+CACHE_VERSION = 3   # 取得方法を変えたら上げる（古い保存分は使わない）
 FINAL = {}
 FINAL_LOCK = threading.Lock()
 
